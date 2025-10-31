@@ -3,13 +3,14 @@ import asyncio
 from bs4 import BeautifulSoup
 from datetime import datetime
 from config import FALLBACK_HOROSCOPES, ZODIAC_URL_MAP
+from translator import translator  # Импортируем переводчик
 
 class HoroscopeParser:
     def __init__(self):
         self.cache = {}
     
-    async def get_daily_horoscope(self, zodiac_sign):
-        """Получение гороскопа из интернета"""
+    async def get_daily_horoscope(self, zodiac_sign, translate=True):
+        """Получение гороскопа из интернета с возможностью перевода"""
         cache_key = f"{zodiac_sign}_{datetime.now().strftime('%Y%m%d')}"
         
         # Проверяем кэш
@@ -24,6 +25,13 @@ class HoroscopeParser:
         # Если ничего не получилось, используем резервный
         if not horoscope:
             horoscope = FALLBACK_HOROSCOPES.get(zodiac_sign, "Сегодня звезды благоволят к вам! ✨")
+            return horoscope
+        
+        # Проверяем язык и переводим если нужно
+        if translate:
+            language = await translator.detect_language(horoscope)
+            if language == 'en':
+                horoscope = await translator.translate_to_russian(horoscope)
         
         # Сохраняем в кэш
         self.cache[cache_key] = horoscope
