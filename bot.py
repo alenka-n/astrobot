@@ -19,31 +19,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     
     welcome_text = f"""
-Привет, {user.first_name}! 👋 Я твой персональный астробот! 🌟
+Привет, {user.first_name}! Я твой персональный астробот! 🌟
 
 Я могу:
 📅 Сохранить твою дату рождения
 ♈ Определить твой знак зодиака  
 🔮 Показать актуальный гороскоп на сегодня
+🌐 Перевести гороскоп на русский
 
-Используй команды:
-/setbirth - Указать дату рождения
-/myhoroscope - Получить гороскоп на сегодня
-/mysign - Узнать свой знак зодиака
-/update - Обновить гороскоп (если устарел)
+Выбери действие:
     """
     
-    # Создаем клавиатуру с командами
+    # Создаем клавиатуру с понятными названиями
     keyboard = [
-        ['/setbirth', '/myhoroscope'],
-        ['/mysign', '/update']
+        ['📅 Указать дату рождения', '🔮 Мой гороскоп'],
+        ['♈ Мой знак зодиака', '🔄 Обновить гороскоп'],
+        ['🌐 Перевести на русский']
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
     await update.message.reply_text(welcome_text, reply_markup=reply_markup)
 
-# Команда для установки даты рождения
-async def set_birth_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Обработка кнопки "Указать дату рождения"
+async def handle_set_birth_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📅 Введи свою дату рождения в формате ДД.ММ.ГГГГ\n"
         "Например: 15.09.1990"
@@ -72,7 +70,7 @@ async def handle_birth_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = (
             f"✅ Отлично! Я сохранил твою дату рождения: {birth_date}\n\n"
             f"{emoji} Твой знак зодиака: {zodiac_sign.capitalize()} {emoji}\n\n"
-            f"Теперь используй /myhoroscope чтобы получить гороскоп на сегодня!"
+            f"Теперь нажми '🔮 Мой гороскоп' чтобы получить гороскоп на сегодня!"
         )
         
     except ValueError:
@@ -83,8 +81,8 @@ async def handle_birth_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(response)
 
-# Команда для получения знака зодиака
-async def get_my_sign(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Обработка кнопки "Мой знак зодиака"
+async def handle_my_sign(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     
     user_data = get_user_data(user.id)
@@ -97,18 +95,18 @@ async def get_my_sign(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = (
             f"{emoji} Твой знак зодиака: {zodiac_sign.capitalize()} {emoji}\n"
             f"📅 Дата рождения: {birth_date}\n\n"
-            f"Хочешь гороскоп на сегодня? Используй /myhoroscope"
+            f"Хочешь гороскоп на сегодня? Нажми '🔮 Мой гороскоп'"
         )
     else:
         response = (
             "❌ Я еще не знаю твою дату рождения.\n"
-            "Используй /setbirth чтобы указать ее!"
+            "Нажми '📅 Указать дату рождения' чтобы указать ее!"
         )
     
     await update.message.reply_text(response)
 
-# Команда для получения гороскопа
-async def get_my_horoscope(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Обработка кнопки "Мой гороскоп"
+async def handle_my_horoscope(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     
     # Показываем статус "печатает"
@@ -120,24 +118,24 @@ async def get_my_horoscope(update: Update, context: ContextTypes.DEFAULT_TYPE):
         zodiac_sign = user_data['zodiac_sign']
         emoji = ZODIAC_EMOJIS.get(zodiac_sign, '✨')
         
-        # Получаем гороскоп из парсера
-        horoscope = await horoscope_parser.get_daily_horoscope(zodiac_sign)
+        # Получаем гороскоп (автоматически определит язык)
+        horoscope = await horoscope_parser.get_daily_horoscope(zodiac_sign, translate=True)
         
         response = (
             f"🔮 Гороскоп на сегодня для {zodiac_sign.capitalize()} {emoji}\n\n"
             f"{horoscope}\n\n"
-            f"💫 Актуально на: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+            f"💫 Актуально на: {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
         )
     else:
         response = (
             "❌ Я еще не знаю твой знак зодиака.\n"
-            "Используй /setbirth чтобы указать дату рождения!"
+            "Нажми '📅 Указать дату рождения' чтобы указать дату рождения!"
         )
     
     await update.message.reply_text(response)
 
-# Команда для обновления гороскопа
-async def update_horoscope(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Обработка кнопки "Обновить гороскоп"
+async def handle_update_horoscope(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     
     user_data = get_user_data(user.id)
@@ -151,15 +149,47 @@ async def update_horoscope(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🔄 Обновляю гороскоп...")
         
         # Получаем свежий гороскоп
-        await get_my_horoscope(update, context)
+        await handle_my_horoscope(update, context)
     else:
-        await update.message.reply_text("Сначала укажи дату рождения через /setbirth")
+        await update.message.reply_text("Сначала укажи дату рождения через '📅 Указать дату рождения'")
 
-# Обработка неизвестных команд
+# Обработка кнопки "Перевести на русский"
+async def handle_translate_horoscope(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    
+    user_data = get_user_data(user.id)
+    
+    if user_data:
+        zodiac_sign = user_data['zodiac_sign']
+        emoji = ZODIAC_EMOJIS.get(zodiac_sign, '✨')
+        
+        await update.message.reply_text("🔄 Получаю и перевожу гороскоп...")
+        
+        # Очищаем кэш для принудительного обновления перевода
+        horoscope_parser.clear_cache(zodiac_sign)
+        
+        # Получаем гороскоп с принудительным переводом
+        horoscope = await horoscope_parser.get_daily_horoscope(zodiac_sign, translate=True)
+        
+        response = (
+            f"🔮 Гороскоп на сегодня для {zodiac_sign.capitalize()} {emoji}\n"
+            f"🇷🇺 (переведено на русский)\n\n"
+            f"{horoscope}\n\n"
+            f"💫 Актуально на: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+        )
+    else:
+        response = (
+            "❌ Я еще не знаю твой знак зодиака.\n"
+            "Нажми '📅 Указать дату рождения' чтобы указать дату рождения!"
+        )
+    
+    await update.message.reply_text(response)
+
+# Обработка неизвестных сообщений
 async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "❌ Не понимаю эту команду.\n"
-        "Используй /start чтобы увидеть список доступных команд."
+        "Используй кнопки меню для навигации."
     )
 
 # Основная функция
@@ -172,10 +202,13 @@ def main():
     
     # Добавляем обработчики команд
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("setbirth", set_birth_date))
-    application.add_handler(CommandHandler("mysign", get_my_sign))
-    application.add_handler(CommandHandler("myhoroscope", get_my_horoscope))
-    application.add_handler(CommandHandler("update", update_horoscope))
+    
+    # Обработчики для кнопок
+    application.add_handler(MessageHandler(filters.Text("📅 Указать дату рождения"), handle_set_birth_date))
+    application.add_handler(MessageHandler(filters.Text("♈ Мой знак зодиака"), handle_my_sign))
+    application.add_handler(MessageHandler(filters.Text("🔮 Мой гороскоп"), handle_my_horoscope))
+    application.add_handler(MessageHandler(filters.Text("🔄 Обновить гороскоп"), handle_update_horoscope))
+    application.add_handler(MessageHandler(filters.Text("🌐 Перевести на русский"), handle_translate_horoscope))
     
     # Обработчик для даты рождения
     application.add_handler(MessageHandler(
